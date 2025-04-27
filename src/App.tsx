@@ -145,7 +145,7 @@ const App: React.FC = () => {
 
   return (
     <div style={{textAlign: "center", marginTop: "50px"}}>
-      <h1>Typing Game</h1>
+      <h1>Speeder</h1>
       <canvas ref={canvasRef} width={2000} height={1000} className="word-canvas" />
       <h2>Score: {score}</h2>
       <h2>HighScore: {localStorage.getItem("high_score") ?? "0"}</h2>
