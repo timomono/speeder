@@ -1,6 +1,6 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, { useEffect, useRef, useState } from "react";
 import words from "./constants/words";
-import characterImage from "./assets/react.svg";
+import characterImage from "./assets/chars/exports/neon.svg";
 
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -17,7 +17,7 @@ const App: React.FC = () => {
   const imageFallSpeed = 50;
   const imageSpeed = 70;
   const imageJumpSpeed = 100;
-  const goalPosition = {x: 2000 - 100, y: 0};
+  const goalPosition = { x: 2000 - 100, y: 0 };
 
   function getRandomWord(score: number): string {
     const minLength = Math.min(3 + Math.floor(score / 5), 15);
@@ -104,7 +104,7 @@ const App: React.FC = () => {
     // キャラクターを描画
     const image = imageRef.current;
     if (image) {
-      ctx.drawImage(image, imageX, imageY, 100, 100);
+      ctx.drawImage(image, imageX, imageY, image.width, image.height);
     }
 
     // ゴールに到達したか確認
@@ -144,14 +144,14 @@ const App: React.FC = () => {
   }, [isGameOver, isGameClear]);
 
   return (
-    <div style={{textAlign: "center", marginTop: "50px"}}>
+    <div style={{ textAlign: "center", marginTop: "50px" }} className="container">
       <h1>Speeder</h1>
       <canvas ref={canvasRef} width={2000} height={1000} className="word-canvas" />
       <h2>Score: {score}</h2>
       <h2>HighScore: {localStorage.getItem("high_score") ?? "0"}</h2>
       {isGameOver && (
         <div>
-          <h2 style={{color: "red"}}>Game Over!</h2>
+          <h2 style={{ color: "red" }}>Game Over!</h2>
           <button
             onClick={() => {
               setIsGameOver(false);
@@ -168,7 +168,7 @@ const App: React.FC = () => {
       )}
       {isGameClear && (
         <div>
-          <h2 style={{color: "blue"}}>Congratulations! Game Clear!</h2>
+          <h2 style={{ color: "blue" }}>Congratulations! Game Clear!</h2>
           <button
             onClick={() => {
               setIsGameClear(false);
