@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import words from "./constants/words";
-import characterImage from "./assets/chars/exports/neon.svg";
+import characterImage from "./assets/chars/tori.png";
 
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -12,6 +12,19 @@ const App: React.FC = () => {
   const imagePos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [isGameClear, setIsGameClear] = useState<boolean>(false);
+  const startTimeRef = useRef<number>(Date.now());
+
+  const resetGame = () => {
+    setIsGameOver(false);
+    setIsGameClear(false);
+    scoreRef.current = 0;
+    inputIndexRef.current = 0;
+    imagePos.current = { x: 0, y: 0 };
+    currentWord.current = getRandomWord(0, new Set());
+    setUsedWords(new Set());
+    startTimeRef.current = Date.now();
+    imageFallSpeedRef.current = 5;
+  }
 
   useEffect(() => {
     currentWord.current = getRandomWord(0, new Set());
@@ -31,7 +44,7 @@ const App: React.FC = () => {
     textColorRef.current = styles.getPropertyValue("--text-color");
   }, []);
 
-  const imageFallSpeed = 18;
+  const imageFallSpeedRef = useRef<number>(5);
   const imageSpeed = 10;
   const imageJumpSpeed = 100;
   const goalPosition = { x: 2000 - 100, y: 0 };
@@ -51,6 +64,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const image = new Image();
     image.src = characterImage;
+    image.width = 150;
+    image.height = image.width * (image.naturalHeight / image.naturalWidth);
     imageRef.current = image;
   }, []);
 
@@ -60,12 +75,7 @@ const App: React.FC = () => {
     const handleKeyPress = (e: KeyboardEvent) => {
       const key = e.key;
       if ((isGameOver || isGameClear) && key === " ") {
-        setIsGameOver(false);
-        setIsGameClear(false);
-        scoreRef.current = 0;
-        inputIndexRef.current = 0;
-        imagePos.current = { x: 0, y: 0 };
-        currentWord.current = getRandomWord(0, usedWords);
+        resetGame();
         return;
       }
 
@@ -129,6 +139,7 @@ const App: React.FC = () => {
   }, [isGameOver, isGameClear]);
 
   const loop = () => {
+    imageFallSpeedRef.current = (Date.now() - startTimeRef.current) * 0.0002 + 5;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -167,11 +178,11 @@ const App: React.FC = () => {
         image.height);
     }
 
-    if (canvasRef.current && imagePos.current.y + imageFallSpeed > canvasRef.current.height) {
+    if (canvasRef.current && imagePos.current.y + imageFallSpeedRef.current > canvasRef.current.height) {
       setIsGameOver(true);
       console.log("Game Over")
     } else {
-      imagePos.current.y += imageFallSpeed;
+      imagePos.current.y += imageFallSpeedRef.current;
     }
 
     if (imagePos.current.x >= goalPosition.x && imagePos.current.y <= goalPosition.y + 100) {
@@ -219,12 +230,7 @@ const App: React.FC = () => {
           <h2 style={{ color: "red" }}>Game Over!</h2>
           <button
             onClick={() => {
-              setIsGameOver(false);
-              imagePos.current.x = 0;
-              imagePos.current.y = 0;
-              scoreRef.current = 0;
-              inputIndexRef.current = 0;
-              currentWord.current = getRandomWord(0, usedWords);
+              resetGame();
             }}
           >
             Restart Game
@@ -236,12 +242,7 @@ const App: React.FC = () => {
           <h2 style={{ color: "blue" }}>Congratulations! Game Clear!</h2>
           <button
             onClick={() => {
-              setIsGameClear(false);
-              imagePos.current.x = 0;
-              imagePos.current.y = 0;
-              scoreRef.current = 0;
-              inputIndexRef.current = 0;
-              currentWord.current = getRandomWord(0, usedWords);
+              resetGame();
             }}
           >
             Play Again
