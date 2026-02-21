@@ -66,6 +66,8 @@ body {
   padding: 0;
   background: var(--container-bg);
   color: var(--text-color);
+  overflow: hidden;
+  /* Prevent scrolling when game is active */
 }
 
 .word-canvas {
@@ -74,7 +76,7 @@ body {
   border: 5pxsolidvar(--canvas-border);
   border-radius: 8px;
   background-color: var(--canvas-bg);
-  box-shadow: 04px12pxrgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 

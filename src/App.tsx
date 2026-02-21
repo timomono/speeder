@@ -5,22 +5,40 @@ import characterImage from "./assets/chars/exports/neon.svg";
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const [usedWords,] = useState<Set<string>>(new Set());
-  const [currentWord, setCurrentWord] = useState<string>(getRandomWord(0));
-  const [inputIndex, setInputIndex] = useState<number>(0);
-  const [score, setScore] = useState<number>(0);
-  const [imageX, setImageX] = useState<number>(0); // キャラクターのX位置
-  const [imageY, setImageY] = useState<number>(0); // キャラクターのY位置
+  const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
+  const currentWord = useRef<string>("");
+  const inputIndexRef = useRef<number>(0);
+  const scoreRef = useRef<number>(0);
+  const imagePos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [isGameClear, setIsGameClear] = useState<boolean>(false);
 
-  const imageFallSpeed = 50;
-  const imageSpeed = 70;
+  useEffect(() => {
+    currentWord.current = getRandomWord(0, new Set());
+  }, []);
+
+  const textMetricsRef = useRef<{ typedWidth: number; remainingWidth: number }>({
+    typedWidth: 0,
+    remainingWidth: 0,
+  });
+
+  const typedColorRef = useRef<string>("");
+  const textColorRef = useRef<string>("");
+
+  useEffect(() => {
+    const styles = getComputedStyle(document.documentElement);
+    typedColorRef.current = styles.getPropertyValue("--typed-color");
+    textColorRef.current = styles.getPropertyValue("--text-color");
+  }, []);
+
+  const imageFallSpeed = 18;
+  const imageSpeed = 10;
   const imageJumpSpeed = 100;
   const goalPosition = { x: 2000 - 100, y: 0 };
 
-  function getRandomWord(score: number): string {
-    const minLength = Math.min(3 + Math.floor(score / 5), 15);
+  function getRandomWord(score: number, usedWords: Set<string>): string {
+    const minLength = Math.min(3 + Math.floor(score * 2), 15);
+    console.log("minimum length: ", minLength)
     let filteredWords = [...words].filter((word) => word.length <= minLength && !usedWords.has(word));
     if (filteredWords.length === 0) {
       filteredWords = [...words].filter((word) => word.length <= minLength)
@@ -38,31 +56,54 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (isGameOver || isGameClear) return;
 
     const handleKeyPress = (e: KeyboardEvent) => {
       const key = e.key;
+      if ((isGameOver || isGameClear) && key === " ") {
+        setIsGameOver(false);
+        setIsGameClear(false);
+        scoreRef.current = 0;
+        inputIndexRef.current = 0;
+        imagePos.current = { x: 0, y: 0 };
+        currentWord.current = getRandomWord(0, usedWords);
+        return;
+      }
 
-      if (key === currentWord[inputIndex]) {
-        setInputIndex((prev) => prev + 1);
-        setImageX((prev) => Math.min(canvas!.width - 100, prev + imageSpeed));
-        setImageY((prev) => Math.max(0, prev - imageJumpSpeed));
+      if (key === currentWord.current[inputIndexRef.current]) {
+        inputIndexRef.current += 1;
+        imagePos.current.x = Math.min(canvas!.width - 100, imagePos.current.x + imageSpeed);
+        imagePos.current.y = Math.max(0, imagePos.current.y - imageJumpSpeed);
 
-        if (inputIndex + 1 === currentWord.length) {
-          setScore((prev) => prev + 1);
+        if (inputIndexRef.current === currentWord.current.length) {
+          scoreRef.current += 1;
           // NaN < score is always false
-          if (parseInt(localStorage.getItem("high_score") ?? "") < score) {
-            localStorage.setItem("high_score", (score + 1).toString());
+          if (parseInt(localStorage.getItem("high_score") ?? "") < scoreRef.current) {
+            localStorage.setItem("high_score", scoreRef.current.toString());
             const ctx = canvasRef.current!.getContext("2d");
             if (!ctx) return;
             ctx.strokeText("High Score Updated!", 100, 100, 10)
           }
           if (localStorage.getItem("high_score") == undefined)
-            localStorage.setItem("high_score", (score + 1).toString())
-          setCurrentWord(getRandomWord(score + 1));
-          usedWords.add(currentWord);
-          setInputIndex(0);
+            localStorage.setItem("high_score", scoreRef.current.toString())
+          currentWord.current = getRandomWord(scoreRef.current, usedWords);
+          setUsedWords(prev => {
+            const next = new Set(prev);
+            next.add(currentWord.current);
+            return next;
+          });
+          inputIndexRef.current = 0;
         }
+
+        const ctx = canvasRef.current!.getContext("2d")!;
+        ctx.font = "200px Arial";
+
+        const typedPart = currentWord.current.slice(0, inputIndexRef.current);
+        const remainingPart = currentWord.current.slice(inputIndexRef.current);
+
+        textMetricsRef.current = {
+          typedWidth: ctx.measureText(typedPart).width,
+          remainingWidth: ctx.measureText(remainingPart).width,
+        };
       }
     };
 
@@ -70,10 +111,11 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [currentWord, inputIndex, score, isGameOver, isGameClear]);
+  }, [isGameClear, isGameOver, usedWords]);
 
   useEffect(() => {
     const root = document.documentElement;
+
     if (isGameOver) {
       root.style.setProperty("--canvas-border", "var(--canvas-border-gameover)");
       root.style.setProperty("--canvas-bg", "var(--canvas-bg-gameover)");
@@ -84,6 +126,9 @@ const App: React.FC = () => {
       root.style.setProperty("--canvas-border", "var(--canvas-border-default)");
       root.style.setProperty("--canvas-bg", "var(--canvas-bg-default)");
     }
+  }, [isGameOver, isGameClear]);
+
+  const loop = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -92,73 +137,82 @@ const App: React.FC = () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ゴール地点を描画
     ctx.fillStyle = "gold";
     ctx.fillRect(goalPosition.x, goalPosition.y, 100, 100);
 
-    // 現在の単語を描画
     ctx.font = "200px Arial";
     ctx.textAlign = "center";
 
-    const typedPart = currentWord.slice(0, inputIndex);
-    const remainingPart = currentWord.slice(inputIndex);
+    const typedPart = currentWord.current.slice(0, inputIndexRef.current);
+    const remainingPart = currentWord.current.slice(inputIndexRef.current);
+    // console.log(typedPart, remainingPart);
 
-    const typedWidth = ctx.measureText(typedPart).width;
-    const remainingWidth = ctx.measureText(remainingPart).width;
+    const typedWidth = textMetricsRef.current.typedWidth;
+    const remainingWidth = textMetricsRef.current.remainingWidth;
 
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--typed-color");
+    ctx.fillStyle = typedColorRef.current;
     ctx.fillText(typedPart, canvas.width / 2 - remainingWidth / 2, canvas.height! / 2);
 
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text-color");
+    ctx.fillStyle = textColorRef.current;
     ctx.fillText(remainingPart, canvas.width / 2 + typedWidth / 2, canvas.height! / 2);
 
     // キャラクターを描画
     const image = imageRef.current;
     if (image) {
-      ctx.drawImage(image, imageX, imageY, image.width, image.height);
+      ctx.drawImage(
+        image,
+        imagePos.current.x,
+        imagePos.current.y,
+        image.width,
+        image.height);
     }
 
-    // ゴールに到達したか確認
-    if (imageX >= goalPosition.x && imageY <= goalPosition.y + 100) {
+    if (canvasRef.current && imagePos.current.y + imageFallSpeed > canvasRef.current.height) {
+      setIsGameOver(true);
+      console.log("Game Over")
+    } else {
+      imagePos.current.y += imageFallSpeed;
+    }
+
+    if (imagePos.current.x >= goalPosition.x && imagePos.current.y <= goalPosition.y + 100) {
       setIsGameClear(true);
     }
 
-    // ゲームオーバーの表示
     if (isGameOver) {
       ctx.font = "100px Arial";
       ctx.fillStyle = "red";
       ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2 - 100);
     }
 
-    // ゲームクリアの表示
     if (isGameClear) {
       ctx.font = "100px Arial";
       ctx.fillStyle = "blue";
       ctx.fillText("Game Clear!", canvas.width / 2, canvas.height / 2 - 100);
     }
-  }, [currentWord, inputIndex, imageX, imageY, isGameOver, isGameClear, goalPosition.x, goalPosition.y]);
+  };
 
   useEffect(() => {
     if (isGameOver || isGameClear) return;
 
-    const interval = setInterval(() => {
-      setImageY((prev) => {
-        if (canvasRef.current && prev + imageFallSpeed > canvasRef.current.height) {
-          setIsGameOver(true);
-          return prev;
-        }
-        return prev + 10;
-      });
-    }, 30);
+    let frameId: number;
 
-    return () => clearInterval(interval);
+    const mainloop = () => {
+      loop();
+      frameId = requestAnimationFrame(mainloop);
+    };
+
+    frameId = requestAnimationFrame(mainloop);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
   }, [isGameOver, isGameClear]);
 
   return (
-    <div style={{ textAlign: "center", marginTop: "50px" }} className="container">
+    <div style={{ textAlign: "center" }} className="container">
       <h1>Speeder</h1>
       <canvas ref={canvasRef} width={2000} height={1000} className="word-canvas" />
-      <h2>Score: {score}</h2>
+      <h2>Score: {scoreRef.current}</h2>
       <h2>HighScore: {localStorage.getItem("high_score") ?? "0"}</h2>
       {isGameOver && (
         <div>
@@ -166,11 +220,11 @@ const App: React.FC = () => {
           <button
             onClick={() => {
               setIsGameOver(false);
-              setImageX(0);
-              setImageY(0);
-              setScore(0);
-              setInputIndex(0);
-              setCurrentWord(getRandomWord(0));
+              imagePos.current.x = 0;
+              imagePos.current.y = 0;
+              scoreRef.current = 0;
+              inputIndexRef.current = 0;
+              currentWord.current = getRandomWord(0, usedWords);
             }}
           >
             Restart Game
@@ -183,11 +237,11 @@ const App: React.FC = () => {
           <button
             onClick={() => {
               setIsGameClear(false);
-              setImageX(0);
-              setImageY(500);
-              setScore(0);
-              setInputIndex(0);
-              setCurrentWord(getRandomWord(0));
+              imagePos.current.x = 0;
+              imagePos.current.y = 0;
+              scoreRef.current = 0;
+              inputIndexRef.current = 0;
+              currentWord.current = getRandomWord(0, usedWords);
             }}
           >
             Play Again
