@@ -73,6 +73,17 @@ const App: React.FC = () => {
   }, [currentWord, inputIndex, score, isGameOver, isGameClear]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    if (isGameOver) {
+      root.style.setProperty("--canvas-border", "var(--canvas-border-gameover)");
+      root.style.setProperty("--canvas-bg", "var(--canvas-bg-gameover)");
+    } else if (isGameClear) {
+      root.style.setProperty("--canvas-border", "var(--canvas-border-clear)");
+      root.style.setProperty("--canvas-bg", "var(--canvas-bg-clear)");
+    } else {
+      root.style.setProperty("--canvas-border", "var(--canvas-border-default)");
+      root.style.setProperty("--canvas-bg", "var(--canvas-bg-default)");
+    }
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -95,10 +106,10 @@ const App: React.FC = () => {
     const typedWidth = ctx.measureText(typedPart).width;
     const remainingWidth = ctx.measureText(remainingPart).width;
 
-    ctx.fillStyle = "green";
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--typed-color");
     ctx.fillText(typedPart, canvas.width / 2 - remainingWidth / 2, canvas.height! / 2);
 
-    ctx.fillStyle = "black";
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text-color");
     ctx.fillText(remainingPart, canvas.width / 2 + typedWidth / 2, canvas.height! / 2);
 
     // キャラクターを描画
